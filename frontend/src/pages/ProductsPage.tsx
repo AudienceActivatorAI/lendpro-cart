@@ -1,7 +1,7 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { Filter, SlidersHorizontal, Grid, List, X } from 'lucide-react';
+import { Filter, Grid, List, X } from 'lucide-react';
 import { apiHelpers } from '@/lib/api';
 import { ProductCard } from '@/components/ui/ProductCard';
 import { Button } from '@/components/ui/Button';

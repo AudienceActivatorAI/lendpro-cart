@@ -1,12 +1,10 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
-import { CreditCard, ChevronLeft, Lock, Shield, X } from 'lucide-react';
+import { CreditCard, ChevronLeft, Lock, X } from 'lucide-react';
 import { useCartStore } from '@/stores/cart';
-import { useAuthStore } from '@/stores/auth';
 import { apiHelpers } from '@/lib/api';
 import { Button } from '@/components/ui/Button';
-import { formatCurrency, getImageUrl, cn } from '@/lib/utils';
+import { formatCurrency, cn } from '@/lib/utils';
 import { toast } from 'sonner';
 
 type PaymentMethod = 'card' | 'financing' | null;

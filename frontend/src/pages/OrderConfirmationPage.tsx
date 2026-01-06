@@ -3,7 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { CheckCircle, Package, Truck, CreditCard, ArrowRight } from 'lucide-react';
 import { apiHelpers } from '@/lib/api';
 import { Button } from '@/components/ui/Button';
-import { formatCurrency, formatDate, getImageUrl } from '@/lib/utils';
+import { formatCurrency, formatDate } from '@/lib/utils';
 
 export function OrderConfirmationPage() {
   const { id } = useParams<{ id: string }>();

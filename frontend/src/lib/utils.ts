@@ -74,13 +74,12 @@ export function getImageUrl(images: Array<{ url: string; isPrimary?: boolean }> 
   if (Array.isArray(images) && images.length > 0) {
     // Handle array of strings
     if (typeof images[0] === 'string') {
-      return images[0];
+      return images[0] as string;
     }
     // Handle array of objects
-    const primary = images.find((img) => typeof img === 'object' && img.isPrimary);
-    const firstImg = images[0];
-    if (typeof firstImg === 'string') return firstImg;
-    return (primary || firstImg).url;
+    const imgArray = images as Array<{ url: string; isPrimary?: boolean }>;
+    const primary = imgArray.find((img) => img.isPrimary);
+    return (primary || imgArray[0]).url;
   }
   
   return '/placeholder-product.jpg';

@@ -61,7 +61,7 @@ interface CartState {
   toggleDrawer: () => void;
 }
 
-export const useCartStore = create<CartState>((set, get) => ({
+export const useCartStore = create<CartState>((set, _get) => ({
   cart: null,
   isLoading: false,
   isDrawerOpen: false,

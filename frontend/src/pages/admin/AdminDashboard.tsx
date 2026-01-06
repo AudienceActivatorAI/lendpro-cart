@@ -13,7 +13,7 @@ import {
 } from 'lucide-react';
 import { useAuthStore } from '@/stores/auth';
 import { api } from '@/lib/api';
-import { formatCurrency, formatDate, cn } from '@/lib/utils';
+import { formatCurrency, cn } from '@/lib/utils';
 
 interface DashboardData {
   dashboard: {
