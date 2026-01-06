@@ -1,4 +1,9 @@
 {
+  "functions": {
+    "api/**/*.ts": {
+      "excludeFiles": "api/mockData.ts"
+    }
+  },
   "rewrites": [
     {
       "source": "/api/:path*",
@@ -20,4 +25,3 @@
     }
   ]
 }
-

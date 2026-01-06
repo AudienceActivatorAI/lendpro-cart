@@ -1,5 +1,5 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { getCart, calculateCartTotals } from '../_mockData';
+import { getCart, calculateCartTotals } from '../mockData';
 
 function getSessionId(req: VercelRequest): string {
   let sessionId = req.headers['x-session-id'] as string;

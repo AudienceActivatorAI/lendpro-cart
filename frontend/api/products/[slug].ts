@@ -1,5 +1,5 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { mockProducts } from '../_mockData';
+import { mockProducts } from '../mockData';
 
 export default function handler(req: VercelRequest, res: VercelResponse) {
   // Enable CORS
