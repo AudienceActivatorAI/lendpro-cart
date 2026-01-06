@@ -132,11 +132,23 @@ export function CheckoutPage() {
         <div className="fixed inset-0 z-50 flex items-center justify-center">
           <div 
             className="absolute inset-0 bg-black/50"
-            onClick={() => paymentMethod && setShowPaymentModal(false)}
+            onClick={() => {
+              if (paymentMethod) {
+                setShowPaymentModal(false);
+              } else {
+                navigate('/cart');
+              }
+            }}
           />
           <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-lg mx-4 p-8">
             <button
-              onClick={() => paymentMethod && setShowPaymentModal(false)}
+              onClick={() => {
+                if (paymentMethod) {
+                  setShowPaymentModal(false);
+                } else {
+                  navigate('/cart');
+                }
+              }}
               className="absolute top-4 right-4 p-2 hover:bg-gray-100 rounded-full transition-colors"
             >
               <X className="w-5 h-5" />
