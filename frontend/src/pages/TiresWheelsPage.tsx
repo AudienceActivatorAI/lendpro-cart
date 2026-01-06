@@ -1,7 +1,10 @@
 import { useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
-import { ShoppingCart, X, Trash2, ChevronRight, CreditCard } from 'lucide-react';
+import { ShoppingCart, X, Trash2, ChevronRight, CreditCard, AlertTriangle } from 'lucide-react';
 import { formatCurrency } from '@/lib/utils';
+
+// AutoSync API Key - can be set via environment variable
+const AUTOSYNC_API_KEY = import.meta.env.VITE_AUTOSYNC_API_KEY || 'v3C4lXEncDytIJUmPnrC';
 
 // Declare the Autosync type for TypeScript
 declare global {
@@ -68,6 +71,8 @@ export function TiresWheelsPage() {
   const [showCartModal, setShowCartModal] = useState(false);
   const [showCheckoutModal, setShowCheckoutModal] = useState(false);
   const [checkoutStep, setCheckoutStep] = useState<'cart' | 'payment' | 'info'>('cart');
+  const [visualizerError, setVisualizerError] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
 
   // Load cart items from localStorage on mount
   useEffect(() => {
@@ -115,6 +120,12 @@ export function TiresWheelsPage() {
       scriptLoadedRef.current = true;
       initializeVisualizer();
     };
+
+    script.onerror = () => {
+      console.error('Failed to load AutoSync script');
+      setIsLoading(false);
+      setVisualizerError(true);
+    };
     
     document.body.appendChild(script);
 
@@ -135,19 +146,36 @@ export function TiresWheelsPage() {
     }
 
     visualizerInitializedRef.current = true;
+    setIsLoading(false);
 
-    new window.Autosync({
-      id: 'autosync-visualizer',
-      key: 'v3C4lXEncDytIJUmPnrC',
-      adaptiveHeight: true,
-      disableQuoteForm: true,
-      homeStyle: 'lookup',
-      productSegment: ['tires', 'wheels', 'vehicles'],
-      scrollBar: false,
-      startPage: null,
-      widget: false,
-      onEvent: handleAutoSyncEvent,
-    });
+    try {
+      new window.Autosync({
+        id: 'autosync-visualizer',
+        key: AUTOSYNC_API_KEY,
+        adaptiveHeight: true,
+        disableQuoteForm: true,
+        homeStyle: 'lookup',
+        productSegment: ['tires', 'wheels', 'vehicles'],
+        scrollBar: false,
+        startPage: null,
+        widget: false,
+        onEvent: handleAutoSyncEvent,
+      });
+
+      // Check for error after a delay (AutoSync shows error in iframe)
+      setTimeout(() => {
+        const container = document.getElementById('autosync-visualizer');
+        if (container) {
+          const iframe = container.querySelector('iframe');
+          if (!iframe || iframe.clientHeight < 100) {
+            setVisualizerError(true);
+          }
+        }
+      }, 3000);
+    } catch (error) {
+      console.error('Failed to initialize AutoSync visualizer:', error);
+      setVisualizerError(true);
+    }
   };
 
   const handleAutoSyncEvent = async ({ event, data }: { event: string; data: AutosyncEventData }) => {
@@ -288,9 +316,49 @@ export function TiresWheelsPage() {
 
       {/* AutoSync Visualizer Container */}
       <div className="relative">
+        {/* Loading State */}
+        {isLoading && (
+          <div className="autosync-container flex items-center justify-center bg-gray-100">
+            <div className="text-center">
+              <div className="w-12 h-12 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+              <p className="text-gray-600 font-medium">Loading Tire & Wheel Visualizer...</p>
+            </div>
+          </div>
+        )}
+
+        {/* Error State */}
+        {visualizerError && (
+          <div className="autosync-container flex items-center justify-center bg-gray-50">
+            <div className="text-center max-w-md p-8">
+              <div className="w-16 h-16 bg-amber-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <AlertTriangle className="w-8 h-8 text-amber-600" />
+              </div>
+              <h3 className="text-xl font-semibold mb-2">Visualizer Unavailable</h3>
+              <p className="text-gray-600 mb-4">
+                The tire & wheel visualizer is currently unavailable. This may be due to API configuration.
+              </p>
+              <p className="text-sm text-gray-500 mb-6">
+                Please contact support or try again later.
+              </p>
+              <button
+                onClick={() => {
+                  setVisualizerError(false);
+                  setIsLoading(true);
+                  visualizerInitializedRef.current = false;
+                  initializeVisualizer();
+                }}
+                className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+              >
+                Try Again
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Visualizer Container */}
         <div 
           id="autosync-visualizer" 
-          className="autosync-container"
+          className={`autosync-container ${isLoading || visualizerError ? 'hidden' : ''}`}
         />
 
         {/* Floating Cart Button */}
