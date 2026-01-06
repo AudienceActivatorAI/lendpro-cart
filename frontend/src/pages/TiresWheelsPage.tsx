@@ -1,6 +1,8 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
+import { ShoppingCart, X, Trash2, ChevronRight, CreditCard } from 'lucide-react';
+import { formatCurrency } from '@/lib/utils';
 
 // Declare the Autosync type for TypeScript
 declare global {
@@ -49,10 +51,43 @@ interface AutosyncEventData {
   };
 }
 
+interface CartItem {
+  id: string;
+  name: string;
+  price: number;
+  quantity: number;
+  image?: string;
+  type: string;
+  partNumber: string;
+  brand: string;
+}
+
 export function TiresWheelsPage() {
   const navigate = useNavigate();
   const scriptLoadedRef = useRef(false);
   const visualizerInitializedRef = useRef(false);
+  const [cartItems, setCartItems] = useState<CartItem[]>([]);
+  const [showCartModal, setShowCartModal] = useState(false);
+  const [showCheckoutModal, setShowCheckoutModal] = useState(false);
+  const [checkoutStep, setCheckoutStep] = useState<'cart' | 'payment' | 'info'>('cart');
+
+  // Load cart items from localStorage on mount
+  useEffect(() => {
+    const loadCartItems = () => {
+      const items = JSON.parse(localStorage.getItem('autosync-cart-items') || '[]');
+      setCartItems(items);
+    };
+    
+    loadCartItems();
+    
+    // Listen for cart updates
+    const handleCartUpdate = () => loadCartItems();
+    window.addEventListener('autosync-cart-updated', handleCartUpdate);
+    
+    return () => {
+      window.removeEventListener('autosync-cart-updated', handleCartUpdate);
+    };
+  }, []);
 
   useEffect(() => {
     // Prevent double initialization
@@ -152,31 +187,22 @@ export function TiresWheelsPage() {
 
       if (addedCount > 0) {
         toast.success(`Added ${addedCount} item(s) to cart`, {
-          description: 'Tires & wheels from AutoSync',
+          description: 'Tires & wheels ready for checkout',
           action: {
             label: 'View Cart',
-            onClick: () => navigate('/cart'),
+            onClick: () => setShowCartModal(true),
           },
         });
       }
     }
   };
 
-  const addToCartCustomProduct = async (product: {
-    id: string;
-    name: string;
-    price: number;
-    quantity: number;
-    image?: string;
-    type: string;
-    partNumber: string;
-    brand: string;
-  }) => {
+  const addToCartCustomProduct = async (product: CartItem) => {
     try {
       const existingAutoSyncItems = JSON.parse(localStorage.getItem('autosync-cart-items') || '[]');
       
       const existingIndex = existingAutoSyncItems.findIndex(
-        (item: { partNumber: string }) => item.partNumber === product.partNumber
+        (item: CartItem) => item.partNumber === product.partNumber
       );
       
       if (existingIndex >= 0) {
@@ -186,12 +212,56 @@ export function TiresWheelsPage() {
       }
       
       localStorage.setItem('autosync-cart-items', JSON.stringify(existingAutoSyncItems));
+      setCartItems(existingAutoSyncItems);
       window.dispatchEvent(new CustomEvent('autosync-cart-updated'));
       
       return true;
     } catch (error) {
       console.error('Failed to add to cart:', error);
       throw error;
+    }
+  };
+
+  const removeFromCart = (partNumber: string) => {
+    const updatedItems = cartItems.filter(item => item.partNumber !== partNumber);
+    localStorage.setItem('autosync-cart-items', JSON.stringify(updatedItems));
+    setCartItems(updatedItems);
+    window.dispatchEvent(new CustomEvent('autosync-cart-updated'));
+  };
+
+  const updateQuantity = (partNumber: string, newQuantity: number) => {
+    if (newQuantity < 1) return;
+    const updatedItems = cartItems.map(item => 
+      item.partNumber === partNumber ? { ...item, quantity: newQuantity } : item
+    );
+    localStorage.setItem('autosync-cart-items', JSON.stringify(updatedItems));
+    setCartItems(updatedItems);
+  };
+
+  const clearCart = () => {
+    localStorage.removeItem('autosync-cart-items');
+    setCartItems([]);
+    window.dispatchEvent(new CustomEvent('autosync-cart-updated'));
+  };
+
+  const cartTotal = cartItems.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+  const cartCount = cartItems.reduce((sum, item) => sum + item.quantity, 0);
+  const monthlyPayment = (cartTotal * 1.15) / 18; // 15% financing cost over 18 months
+
+  const handleProceedToCheckout = () => {
+    setShowCartModal(false);
+    setShowCheckoutModal(true);
+    setCheckoutStep('payment');
+  };
+
+  const handlePaymentMethodSelect = (method: 'card' | 'financing') => {
+    if (method === 'financing') {
+      // Open LendPro financing in new tab or redirect
+      window.open('https://lendpro.com/apply', '_blank');
+      toast.success('Opening LendPro financing application...');
+    } else {
+      // Proceed to card payment
+      setCheckoutStep('info');
     }
   };
 
@@ -209,7 +279,7 @@ export function TiresWheelsPage() {
               </div>
             </div>
             <button 
-              onClick={() => navigate('/checkout')}
+              onClick={() => setShowCheckoutModal(true)}
               className="px-6 py-2.5 bg-blue-500 text-white rounded-full font-medium hover:bg-blue-600 transition-colors"
             >
               Apply for Financing
@@ -219,10 +289,310 @@ export function TiresWheelsPage() {
       </div>
 
       {/* AutoSync Visualizer Container */}
-      <div 
-        id="autosync-visualizer" 
-        className="autosync-container"
-      />
+      <div className="relative">
+        <div 
+          id="autosync-visualizer" 
+          className="autosync-container"
+        />
+
+        {/* Floating Cart Button */}
+        {cartItems.length > 0 && (
+          <button
+            onClick={() => setShowCartModal(true)}
+            className="fixed bottom-6 right-6 z-50 flex items-center gap-3 px-6 py-4 bg-blue-600 text-white rounded-full shadow-2xl hover:bg-blue-700 transition-all hover:scale-105 animate-pulse-slow"
+          >
+            <div className="relative">
+              <ShoppingCart className="w-6 h-6" />
+              <span className="absolute -top-2 -right-2 w-5 h-5 bg-red-500 rounded-full text-xs flex items-center justify-center font-bold">
+                {cartCount}
+              </span>
+            </div>
+            <div className="text-left">
+              <p className="font-semibold">Checkout</p>
+              <p className="text-sm opacity-90">{formatCurrency(cartTotal)}</p>
+            </div>
+          </button>
+        )}
+      </div>
+
+      {/* Cart Modal */}
+      {showCartModal && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-hidden flex flex-col">
+            {/* Header */}
+            <div className="flex items-center justify-between p-6 border-b bg-gradient-to-r from-slate-800 to-slate-900 text-white">
+              <div className="flex items-center gap-3">
+                <img src="/images/lendpro-icon.svg" alt="LendPro" className="w-8 h-8" />
+                <div>
+                  <h2 className="text-xl font-bold">Your Cart</h2>
+                  <p className="text-sm text-gray-300">{cartCount} item(s)</p>
+                </div>
+              </div>
+              <button 
+                onClick={() => setShowCartModal(false)}
+                className="p-2 hover:bg-white/10 rounded-full transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Cart Items */}
+            <div className="flex-1 overflow-y-auto p-4 space-y-3">
+              {cartItems.length === 0 ? (
+                <div className="text-center py-12 text-gray-500">
+                  <ShoppingCart className="w-16 h-16 mx-auto mb-4 opacity-30" />
+                  <p className="font-medium">Your cart is empty</p>
+                  <p className="text-sm">Add tires or wheels from the visualizer</p>
+                </div>
+              ) : (
+                cartItems.map((item) => (
+                  <div key={item.partNumber} className="flex gap-4 p-4 bg-gray-50 rounded-xl">
+                    <div className="w-20 h-20 bg-gray-200 rounded-lg flex items-center justify-center overflow-hidden">
+                      {item.image ? (
+                        <img src={item.image} alt={item.name} className="w-full h-full object-cover" />
+                      ) : (
+                        <span className="text-2xl">🛞</span>
+                      )}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-medium text-sm truncate">{item.name}</p>
+                      <p className="text-xs text-gray-500">{item.brand} • {item.partNumber}</p>
+                      <p className="text-xs text-gray-500 capitalize">{item.type}</p>
+                      <div className="flex items-center justify-between mt-2">
+                        <div className="flex items-center gap-2">
+                          <button 
+                            onClick={() => updateQuantity(item.partNumber, item.quantity - 1)}
+                            className="w-7 h-7 rounded-full bg-gray-200 flex items-center justify-center text-sm font-bold hover:bg-gray-300"
+                          >
+                            -
+                          </button>
+                          <span className="text-sm font-medium w-6 text-center">{item.quantity}</span>
+                          <button 
+                            onClick={() => updateQuantity(item.partNumber, item.quantity + 1)}
+                            className="w-7 h-7 rounded-full bg-gray-200 flex items-center justify-center text-sm font-bold hover:bg-gray-300"
+                          >
+                            +
+                          </button>
+                        </div>
+                        <p className="font-semibold">{formatCurrency(item.price * item.quantity)}</p>
+                      </div>
+                    </div>
+                    <button 
+                      onClick={() => removeFromCart(item.partNumber)}
+                      className="p-2 text-red-500 hover:bg-red-50 rounded-lg self-start"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
+                ))
+              )}
+            </div>
+
+            {/* Footer with Totals and Checkout */}
+            {cartItems.length > 0 && (
+              <div className="border-t p-4 space-y-4 bg-gray-50">
+                <div className="space-y-2">
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-600">Subtotal</span>
+                    <span className="font-medium">{formatCurrency(cartTotal)}</span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-600">Mounting & Balancing</span>
+                    <span className="text-green-600 font-medium">FREE</span>
+                  </div>
+                  <div className="flex justify-between text-lg font-bold pt-2 border-t">
+                    <span>Total</span>
+                    <span>{formatCurrency(cartTotal)}</span>
+                  </div>
+                </div>
+
+                <div className="bg-blue-50 border border-blue-200 rounded-xl p-3">
+                  <div className="flex items-center gap-2">
+                    <img src="/images/lendpro-icon.svg" alt="LendPro" className="w-6 h-6" />
+                    <div className="flex-1">
+                      <p className="text-sm font-semibold text-blue-900">Pay as low as {formatCurrency(monthlyPayment)}/mo</p>
+                      <p className="text-xs text-blue-700">with LendPro Financing • Up to 18 months</p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex gap-3">
+                  <button
+                    onClick={clearCart}
+                    className="px-4 py-3 border border-gray-300 rounded-xl font-medium hover:bg-gray-100 transition-colors"
+                  >
+                    Clear
+                  </button>
+                  <button
+                    onClick={handleProceedToCheckout}
+                    className="flex-1 flex items-center justify-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-xl font-semibold hover:bg-blue-700 transition-colors"
+                  >
+                    Checkout
+                    <ChevronRight className="w-5 h-5" />
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Checkout Modal */}
+      {showCheckoutModal && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden">
+            {/* Header */}
+            <div className="flex items-center justify-between p-6 border-b bg-gradient-to-r from-slate-800 to-slate-900 text-white">
+              <div className="flex items-center gap-3">
+                <img src="/images/lendpro-icon.svg" alt="LendPro" className="w-8 h-8" />
+                <h2 className="text-xl font-bold">Checkout</h2>
+              </div>
+              <button 
+                onClick={() => {
+                  setShowCheckoutModal(false);
+                  setCheckoutStep('cart');
+                }}
+                className="p-2 hover:bg-white/10 rounded-full transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Payment Method Selection */}
+            {checkoutStep === 'payment' && (
+              <div className="p-6 space-y-4">
+                <p className="text-gray-600 text-center mb-6">Choose how you'd like to pay</p>
+                
+                {/* Order Summary */}
+                {cartItems.length > 0 && (
+                  <div className="bg-gray-50 rounded-xl p-4 mb-6">
+                    <div className="flex justify-between text-sm mb-2">
+                      <span className="text-gray-600">{cartCount} item(s)</span>
+                      <span className="font-semibold">{formatCurrency(cartTotal)}</span>
+                    </div>
+                    <div className="text-xs text-gray-500">
+                      {cartItems.map(item => item.name).join(', ')}
+                    </div>
+                  </div>
+                )}
+
+                {/* Pay Today Option */}
+                <button
+                  onClick={() => handlePaymentMethodSelect('card')}
+                  className="w-full flex items-center gap-4 p-5 border-2 border-gray-200 rounded-xl hover:border-blue-500 hover:bg-blue-50/50 transition-all group"
+                >
+                  <div className="flex items-center gap-2">
+                    <img src="/images/visa-logo.svg" alt="Visa" className="h-6" />
+                    <img src="/images/mastercard-logo.svg" alt="Mastercard" className="h-6" />
+                  </div>
+                  <div className="flex-1 text-left">
+                    <p className="font-semibold text-gray-900">Pay Today</p>
+                    <p className="text-sm text-gray-500">Credit / Debit Card</p>
+                  </div>
+                  <ChevronRight className="w-5 h-5 text-gray-400 group-hover:text-blue-500" />
+                </button>
+
+                {/* LendPro Financing Option */}
+                <button
+                  onClick={() => handlePaymentMethodSelect('financing')}
+                  className="w-full flex items-center gap-4 p-5 border-2 border-blue-500 rounded-xl bg-blue-50 hover:bg-blue-100 transition-all group relative overflow-hidden"
+                >
+                  <div className="absolute top-2 right-2 px-2 py-0.5 bg-green-500 text-white text-xs font-bold rounded-full">
+                    POPULAR
+                  </div>
+                  <img src="/images/lendpro-icon.svg" alt="LendPro" className="w-10 h-10" />
+                  <div className="flex-1 text-left">
+                    <p className="font-semibold text-gray-900">Pay Later with LendPro</p>
+                    <p className="text-sm text-blue-600 font-medium">
+                      As low as {formatCurrency(monthlyPayment)}/mo for 18 months
+                    </p>
+                    <p className="text-xs text-gray-500 mt-1">No credit needed • Instant approval</p>
+                  </div>
+                  <ChevronRight className="w-5 h-5 text-blue-500" />
+                </button>
+
+                <p className="text-xs text-gray-500 text-center pt-4">
+                  🔒 Secure checkout powered by LendPro
+                </p>
+              </div>
+            )}
+
+            {/* Card Payment Info Form */}
+            {checkoutStep === 'info' && (
+              <div className="p-6 space-y-4">
+                <button 
+                  onClick={() => setCheckoutStep('payment')}
+                  className="flex items-center gap-2 text-sm text-gray-600 hover:text-gray-900"
+                >
+                  ← Back to payment options
+                </button>
+
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
+                    <input 
+                      type="email" 
+                      placeholder="you@example.com"
+                      className="w-full px-4 py-3 border rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Card Number</label>
+                    <div className="relative">
+                      <input 
+                        type="text" 
+                        placeholder="4242 4242 4242 4242"
+                        className="w-full px-4 py-3 border rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                      />
+                      <CreditCard className="absolute right-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Expiry</label>
+                      <input 
+                        type="text" 
+                        placeholder="MM/YY"
+                        className="w-full px-4 py-3 border rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">CVC</label>
+                      <input 
+                        type="text" 
+                        placeholder="123"
+                        className="w-full px-4 py-3 border rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                <div className="bg-gray-50 rounded-xl p-4 mt-4">
+                  <div className="flex justify-between font-bold">
+                    <span>Total</span>
+                    <span>{formatCurrency(cartTotal)}</span>
+                  </div>
+                </div>
+
+                <button
+                  onClick={() => {
+                    toast.success('Payment processing...', { description: 'This is a demo checkout' });
+                    setTimeout(() => {
+                      clearCart();
+                      setShowCheckoutModal(false);
+                      setCheckoutStep('cart');
+                      toast.success('Order placed successfully!', { description: 'Thank you for your purchase' });
+                    }, 2000);
+                  }}
+                  className="w-full py-4 bg-blue-600 text-white rounded-xl font-semibold hover:bg-blue-700 transition-colors"
+                >
+                  Pay {formatCurrency(cartTotal)}
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Info Section */}
       <div className="bg-white border-t">
