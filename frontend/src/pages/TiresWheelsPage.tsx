@@ -1,5 +1,4 @@
 import { useEffect, useRef, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { ShoppingCart, X, Trash2, ChevronRight, CreditCard } from 'lucide-react';
 import { formatCurrency } from '@/lib/utils';
@@ -63,7 +62,6 @@ interface CartItem {
 }
 
 export function TiresWheelsPage() {
-  const navigate = useNavigate();
   const scriptLoadedRef = useRef(false);
   const visualizerInitializedRef = useRef(false);
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
