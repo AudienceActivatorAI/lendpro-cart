@@ -12,7 +12,6 @@ type PaymentMethod = 'card' | 'financing' | null;
 export function CheckoutPage() {
   const navigate = useNavigate();
   const { cart, setShippingAddress, setBillingAddress } = useCartStore();
-  const { isAuthenticated } = useAuthStore();
   const [showPaymentModal, setShowPaymentModal] = useState(true);
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>(null);
   const [isProcessing, setIsProcessing] = useState(false);
