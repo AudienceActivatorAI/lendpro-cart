@@ -35,11 +35,12 @@ export function Header() {
             <Link to="/products" className="text-sm font-medium hover:text-primary transition-colors">
               Shop All
             </Link>
-            <Link to="/products?category=mattresses" className="text-sm font-medium hover:text-primary transition-colors">
-              Mattresses
+            <Link to="/tires-wheels" className="text-sm font-medium hover:text-primary transition-colors flex items-center gap-1">
+              <span>Tires & Wheels</span>
+              <span className="px-1.5 py-0.5 text-[10px] bg-blue-600 text-white rounded-full">NEW</span>
             </Link>
-            <Link to="/products?category=bedding" className="text-sm font-medium hover:text-primary transition-colors">
-              Bedding
+            <Link to="/products?category=electronics" className="text-sm font-medium hover:text-primary transition-colors">
+              Electronics
             </Link>
             <Link to="/products?category=furniture" className="text-sm font-medium hover:text-primary transition-colors">
               Furniture
@@ -145,7 +146,7 @@ export function Header() {
         <div
           className={cn(
             'md:hidden overflow-hidden transition-all duration-300',
-            isMenuOpen ? 'max-h-64 opacity-100' : 'max-h-0 opacity-0'
+            isMenuOpen ? 'max-h-80 opacity-100' : 'max-h-0 opacity-0'
           )}
         >
           <nav className="py-4 space-y-2">
@@ -157,18 +158,19 @@ export function Header() {
               Shop All
             </Link>
             <Link
-              to="/products?category=mattresses"
-              className="block px-4 py-2 text-sm hover:bg-muted rounded-md"
+              to="/tires-wheels"
+              className="block px-4 py-2 text-sm hover:bg-muted rounded-md flex items-center gap-2"
               onClick={() => setIsMenuOpen(false)}
             >
-              Mattresses
+              Tires & Wheels
+              <span className="px-1.5 py-0.5 text-[10px] bg-blue-600 text-white rounded-full">NEW</span>
             </Link>
             <Link
-              to="/products?category=bedding"
+              to="/products?category=electronics"
               className="block px-4 py-2 text-sm hover:bg-muted rounded-md"
               onClick={() => setIsMenuOpen(false)}
             >
-              Bedding
+              Electronics
             </Link>
             <Link
               to="/products?category=furniture"
