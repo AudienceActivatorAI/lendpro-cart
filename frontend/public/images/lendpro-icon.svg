@@ -1,18 +1,17 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 50 50" fill="none">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
   <defs>
-    <linearGradient id="iconGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" style="stop-color:#5BB5F8"/>
-      <stop offset="50%" style="stop-color:#4DA3FF"/>
-      <stop offset="100%" style="stop-color:#7DD3FC"/>
+    <linearGradient id="grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#4A9DF8"/>
+      <stop offset="100%" style="stop-color:#5EE0F7"/>
     </linearGradient>
   </defs>
-  <!-- Circle background -->
-  <circle cx="25" cy="25" r="24" fill="url(#iconGrad)"/>
-  <!-- L letter -->
-  <path d="M13 36V13h5v18h10v5H13z" fill="white"/>
-  <!-- P letter stylized -->
-  <path d="M26 13c8 0 12 4 12 10s-4 10-10 10h-2v3h-4V13h4zm0 15h2c4 0 6-2 6-5s-2-5-6-5h-2v10z" fill="white" fill-opacity="0.9"/>
-  <!-- Diagonal accent line -->
-  <line x1="44" y1="6" x2="50" y2="44" stroke="#7DD3FC" stroke-width="3" stroke-linecap="round"/>
+  <circle cx="50" cy="50" r="50" fill="url(#grad)"/>
+  <g fill="white">
+    <!-- L vertical bar -->
+    <polygon points="25,20 25,80 47,80 47,72 33,72 33,28"/>
+    <!-- Diagonal cut through L -->
+    <polygon points="33,72 47,58 47,72" fill="url(#grad)"/>
+    <!-- P diagonal and vertical -->
+    <polygon points="40,20 68,48 68,80 60,80 60,52 44,36 44,20"/>
+  </g>
 </svg>
-
