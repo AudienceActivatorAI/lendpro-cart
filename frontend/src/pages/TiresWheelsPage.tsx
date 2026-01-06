@@ -1,6 +1,5 @@
 import { useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useCartStore } from '@/stores/cart';
 import { toast } from 'sonner';
 
 // Declare the Autosync type for TypeScript
@@ -51,7 +50,6 @@ interface AutosyncEventData {
 
 export function TiresWheelsPage() {
   const navigate = useNavigate();
-  const { addToCart } = useCartStore();
   const visualizerRef = useRef<HTMLDivElement>(null);
   const scriptLoadedRef = useRef(false);
 
