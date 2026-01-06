@@ -1,6 +1,5 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { getCart, updateCart, calculateCartTotals, mockProducts } from '../_mockData';
-import { v4 as uuidv4 } from 'uuid';
 
 function getSessionId(req: VercelRequest): string {
   let sessionId = req.headers['x-session-id'] as string;
@@ -48,7 +47,7 @@ export default function handler(req: VercelRequest, res: VercelResponse) {
       } else {
         // Add new item
         cart.items.push({
-          id: uuidv4(),
+          id: `item-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
           productId: product.id,
           product: product,
           quantity,

@@ -1,6 +1,5 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { getCart, updateCart, calculateCartTotals, mockProducts } from '../_mockData';
-import { v4 as uuidv4 } from 'uuid';
+import { getCart, updateCart, calculateCartTotals } from '../_mockData';
 
 function getSessionId(req: VercelRequest, res: VercelResponse): string {
   let sessionId = req.headers['x-session-id'] as string;
@@ -10,7 +9,7 @@ function getSessionId(req: VercelRequest, res: VercelResponse): string {
   }
   
   if (!sessionId) {
-    sessionId = uuidv4();
+    sessionId = `session-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
     res.setHeader('Set-Cookie', `sessionId=${sessionId}; Path=/; HttpOnly; SameSite=Lax; Max-Age=604800`);
   }
   
