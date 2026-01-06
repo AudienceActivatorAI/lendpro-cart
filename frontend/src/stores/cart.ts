@@ -21,6 +21,7 @@ interface CartItem {
   unitPrice: number;
   totalPrice: number;
   warrantyId?: string;
+  warranty?: { id: string; name: string; price: number };
   warrantyPrice?: number;
 }
 
