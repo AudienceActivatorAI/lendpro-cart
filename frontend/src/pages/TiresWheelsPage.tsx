@@ -20,6 +20,7 @@ interface AutosyncConfig {
   scrollBar?: boolean;
   startPage?: string | null;
   widget?: boolean | object;
+  customStyleSheet?: string | null;
 }
 
 interface AutosyncProduct {
@@ -50,13 +51,29 @@ interface AutosyncEventData {
 
 export function TiresWheelsPage() {
   const navigate = useNavigate();
-  const visualizerRef = useRef<HTMLDivElement>(null);
   const scriptLoadedRef = useRef(false);
+  const visualizerInitializedRef = useRef(false);
 
   useEffect(() => {
-    // Load the AutoSync script
-    if (scriptLoadedRef.current) return;
+    // Prevent double initialization
+    if (scriptLoadedRef.current) {
+      if (!visualizerInitializedRef.current && window.Autosync) {
+        initializeVisualizer();
+      }
+      return;
+    }
     
+    // Check if script already exists
+    const existingScript = document.querySelector('script[src="https://vvs.autosyncstudio.com/js/Autosync.js"]');
+    if (existingScript) {
+      scriptLoadedRef.current = true;
+      if (window.Autosync && !visualizerInitializedRef.current) {
+        initializeVisualizer();
+      }
+      return;
+    }
+
+    // Load the AutoSync script
     const script = document.createElement('script');
     script.src = 'https://vvs.autosyncstudio.com/js/Autosync.js';
     script.async = true;
@@ -69,34 +86,33 @@ export function TiresWheelsPage() {
     document.body.appendChild(script);
 
     return () => {
-      // Cleanup script on unmount
-      const existingScript = document.querySelector('script[src="https://vvs.autosyncstudio.com/js/Autosync.js"]');
-      if (existingScript) {
-        existingScript.remove();
-      }
+      // Don't remove script on unmount to allow re-initialization
     };
   }, []);
 
   const initializeVisualizer = () => {
-    if (!window.Autosync) {
-      console.error('AutoSync script not loaded');
+    if (!window.Autosync || visualizerInitializedRef.current) {
       return;
     }
+
+    // Clear the container first
+    const container = document.getElementById('autosync-visualizer');
+    if (container) {
+      container.innerHTML = '';
+    }
+
+    visualizerInitializedRef.current = true;
 
     new window.Autosync({
       id: 'autosync-visualizer',
       key: 'v3C4lXEncDytIJUmPnrC',
       adaptiveHeight: true,
-      disableQuoteForm: true, // We'll use our own checkout
+      disableQuoteForm: true,
       homeStyle: 'lookup',
       productSegment: ['tires', 'wheels', 'vehicles'],
-      scrollBar: true,
+      scrollBar: false,
       startPage: null,
-      widget: {
-        sizesLookup: true,
-        brandsLookup: true,
-        vehiclesLookup: true,
-      },
+      widget: false,
       onEvent: handleAutoSyncEvent,
     });
   };
@@ -118,7 +134,6 @@ export function TiresWheelsPage() {
       let addedCount = 0;
       for (const product of allProducts) {
         try {
-          // Create a custom product entry for tires/wheels
           await addToCartCustomProduct({
             id: `autosync-${product.partNumber}`,
             name: product.displayName || `${product.brand} - ${product.partNumber}`,
@@ -147,7 +162,6 @@ export function TiresWheelsPage() {
     }
   };
 
-  // Custom function to add AutoSync products to cart
   const addToCartCustomProduct = async (product: {
     id: string;
     name: string;
@@ -158,10 +172,7 @@ export function TiresWheelsPage() {
     partNumber: string;
     brand: string;
   }) => {
-    // For now, we'll use the mock cart system
-    // In production, this would call a dedicated API endpoint
     try {
-      // Store in localStorage for the cart to pick up
       const existingAutoSyncItems = JSON.parse(localStorage.getItem('autosync-cart-items') || '[]');
       
       const existingIndex = existingAutoSyncItems.findIndex(
@@ -175,8 +186,6 @@ export function TiresWheelsPage() {
       }
       
       localStorage.setItem('autosync-cart-items', JSON.stringify(existingAutoSyncItems));
-      
-      // Trigger a cart refresh event
       window.dispatchEvent(new CustomEvent('autosync-cart-updated'));
       
       return true;
@@ -187,43 +196,21 @@ export function TiresWheelsPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <div className="bg-gradient-to-r from-blue-600 to-blue-800 text-white py-12">
-        <div className="container mx-auto px-4">
-          <h1 className="text-4xl font-bold mb-4">Tires & Wheels</h1>
-          <p className="text-xl text-blue-100 max-w-2xl">
-            Find the perfect tires and wheels for your vehicle. Visualize them on your car 
-            and finance your purchase with LendPro - pay as low as $50/mo.
-          </p>
-          <div className="flex gap-4 mt-6">
-            <span className="px-4 py-2 bg-white/20 rounded-full text-sm font-medium">
-              ✓ Free Mounting & Balancing
-            </span>
-            <span className="px-4 py-2 bg-white/20 rounded-full text-sm font-medium">
-              ✓ Financing Available
-            </span>
-            <span className="px-4 py-2 bg-white/20 rounded-full text-sm font-medium">
-              ✓ Price Match Guarantee
-            </span>
-          </div>
-        </div>
-      </div>
-
+    <div className="tires-wheels-page">
       {/* Financing Banner */}
-      <div className="bg-yellow-50 border-b border-yellow-200">
-        <div className="container mx-auto px-4 py-4">
+      <div className="bg-gradient-to-r from-slate-800 to-slate-900 text-white">
+        <div className="max-w-[1400px] mx-auto px-4 py-4">
           <div className="flex items-center justify-between flex-wrap gap-4">
             <div className="flex items-center gap-3">
               <img src="/images/lendpro-icon.svg" alt="LendPro" className="w-10 h-10" />
               <div>
-                <p className="font-semibold text-gray-900">Finance Your Tires & Wheels</p>
-                <p className="text-sm text-gray-600">Pay over time with LendPro - No credit needed</p>
+                <p className="font-semibold">Finance Your Tires & Wheels</p>
+                <p className="text-sm text-gray-300">Pay over time with LendPro – No credit needed</p>
               </div>
             </div>
             <button 
               onClick={() => navigate('/checkout')}
-              className="px-6 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition-colors"
+              className="px-6 py-2.5 bg-blue-500 text-white rounded-full font-medium hover:bg-blue-600 transition-colors"
             >
               Apply for Financing
             </button>
@@ -232,17 +219,14 @@ export function TiresWheelsPage() {
       </div>
 
       {/* AutoSync Visualizer Container */}
-      <div className="container mx-auto px-4 py-8">
-        <div 
-          id="autosync-visualizer" 
-          ref={visualizerRef}
-          className="min-h-[800px] bg-white rounded-2xl shadow-lg overflow-hidden"
-        />
-      </div>
+      <div 
+        id="autosync-visualizer" 
+        className="autosync-container"
+      />
 
       {/* Info Section */}
       <div className="bg-white border-t">
-        <div className="container mx-auto px-4 py-12">
+        <div className="max-w-[1400px] mx-auto px-4 py-12">
           <div className="grid md:grid-cols-3 gap-8">
             <div className="text-center">
               <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
@@ -279,4 +263,3 @@ export function TiresWheelsPage() {
 }
 
 export default TiresWheelsPage;
-

@@ -118,3 +118,71 @@
   scrollbar-width: none;
 }
 
+/* Tires & Wheels Page Styles */
+.tires-wheels-page {
+  display: flex;
+  flex-direction: column;
+  min-height: calc(100vh - 80px);
+  width: 100%;
+}
+
+/* AutoSync Visualizer Container */
+.autosync-container {
+  width: 100%;
+  min-height: 800px;
+  background: #f8f9fa;
+  position: relative;
+}
+
+/* AutoSync Visualizer Styles */
+#autosync-visualizer {
+  position: relative;
+  width: 100% !important;
+  max-width: 100% !important;
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+#autosync-visualizer iframe,
+#autosync-visualizer > iframe {
+  width: 100% !important;
+  min-width: 100% !important;
+  max-width: 100% !important;
+  height: 800px !important;
+  min-height: 800px !important;
+  border: none !important;
+  display: block !important;
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+/* Ensure the visualizer container fills available space */
+#autosync-visualizer > div,
+#autosync-visualizer > div > div {
+  width: 100% !important;
+  max-width: 100% !important;
+}
+
+/* Override any inline styles that might be constraining width */
+#autosync-visualizer [style*="max-width"] {
+  max-width: 100% !important;
+}
+
+#autosync-visualizer [style*="margin: 0 auto"],
+#autosync-visualizer [style*="margin:0 auto"] {
+  margin: 0 !important;
+}
+
+/* Responsive adjustments for the visualizer */
+@media (max-width: 768px) {
+  .autosync-container {
+    min-height: 600px;
+  }
+  
+  #autosync-visualizer iframe,
+  #autosync-visualizer > iframe {
+    height: 600px !important;
+    min-height: 600px !important;
+  }
+}
+
