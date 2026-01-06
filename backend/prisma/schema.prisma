@@ -1,0 +1,747 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// ==================== USERS ====================
+
+model User {
+  id                      String        @id @default(uuid())
+  email                   String        @unique
+  passwordHash            String
+  firstName               String
+  lastName                String
+  phone                   String?
+  role                    UserRole      @default(CUSTOMER)
+  isActive                Boolean       @default(true)
+  isEmailVerified         Boolean       @default(false)
+  avatarUrl               String?
+  defaultShippingAddressId String?
+  defaultBillingAddressId  String?
+  preferences             Json          @default("{}")
+  lastLoginAt             DateTime?
+  createdAt               DateTime      @default(now())
+  updatedAt               DateTime      @updatedAt
+
+  addresses               UserAddress[]
+  carts                   Cart[]
+  orders                  Order[]
+  paymentMethods          PaymentMethod[]
+  financingApplications   FinancingApplication[]
+  warrantyContracts       WarrantyContract[]
+  refreshTokens           RefreshToken[]
+
+  @@index([email])
+  @@index([role])
+}
+
+enum UserRole {
+  CUSTOMER
+  ADMIN
+  MANAGER
+}
+
+model UserAddress {
+  id          String      @id @default(uuid())
+  userId      String
+  user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  label       String?
+  firstName   String
+  lastName    String
+  company     String?
+  address1    String
+  address2    String?
+  city        String
+  state       String
+  postalCode  String
+  country     String      @default("US")
+  phone       String?
+  isDefault   Boolean     @default(false)
+  type        AddressType @default(BOTH)
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  @@index([userId])
+}
+
+enum AddressType {
+  SHIPPING
+  BILLING
+  BOTH
+}
+
+model RefreshToken {
+  id          String   @id @default(uuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  token       String   @unique
+  expiresAt   DateTime
+  createdAt   DateTime @default(now())
+
+  @@index([userId])
+  @@index([token])
+}
+
+// ==================== PRODUCTS ====================
+
+model ProductCategory {
+  id               String            @id @default(uuid())
+  name             String
+  slug             String            @unique
+  description      String?
+  parentId         String?
+  parent           ProductCategory?  @relation("CategoryHierarchy", fields: [parentId], references: [id])
+  children         ProductCategory[] @relation("CategoryHierarchy")
+  image            String?
+  attributesSchema Json              @default("[]")
+  isActive         Boolean           @default(true)
+  sortOrder        Int               @default(0)
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+
+  products         Product[]
+  upsellRules      UpsellRule[]
+  categoryMappings CategoryUpsellMapping[] @relation("SourceCategory")
+  targetMappings   CategoryUpsellMapping[] @relation("TargetCategory")
+
+  @@index([slug])
+  @@index([parentId])
+}
+
+model Product {
+  id                String          @id @default(uuid())
+  name              String
+  slug              String          @unique
+  description       String
+  shortDescription  String?
+  price             Decimal         
+  compareAtPrice    Decimal?        
+  costPrice         Decimal?        
+  sku               String          @unique
+  barcode           String?
+  categoryId        String
+  category          ProductCategory @relation(fields: [categoryId], references: [id])
+  brand             String?
+  attributes        Json            @default("{}")
+  images            Json            @default("[]")
+  stock             Int             @default(0)
+  lowStockThreshold Int             @default(5)
+  trackInventory    Boolean         @default(true)
+  weight            Decimal?        
+  dimensions        Json?
+  isActive          Boolean         @default(true)
+  isFeatured        Boolean         @default(false)
+  tags              Json             @default("[]")
+  metaTitle         String?
+  metaDescription   String?
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
+
+  cartItems         CartItem[]
+  orderItems        OrderItem[]
+  upsellRules       UpsellRule[]
+  warrantyPlans     WarrantyPlan[]
+  associationsA     ProductAssociation[] @relation("ProductA")
+  associationsB     ProductAssociation[] @relation("ProductB")
+
+  @@index([slug])
+  @@index([categoryId])
+  @@index([sku])
+  @@index([isActive, isFeatured])
+}
+
+// ==================== CART ====================
+
+model Cart {
+  id              String     @id @default(uuid())
+  userId          String?
+  user            User?      @relation(fields: [userId], references: [id], onDelete: SetNull)
+  sessionId       String     @unique
+  subtotal        Decimal     @default(0)
+  discountTotal   Decimal     @default(0)
+  taxTotal        Decimal     @default(0)
+  shippingTotal   Decimal     @default(0)
+  total           Decimal     @default(0)
+  couponCode      String?
+  shippingAddress Json?
+  billingAddress  Json?
+  shippingMethodId String?
+  notes           String?
+  expiresAt       DateTime
+  createdAt       DateTime   @default(now())
+  updatedAt       DateTime   @updatedAt
+
+  items           CartItem[]
+  financingApplications FinancingApplication[]
+
+  @@index([userId])
+  @@index([sessionId])
+  @@index([expiresAt])
+}
+
+model CartItem {
+  id            String   @id @default(uuid())
+  cartId        String
+  cart          Cart     @relation(fields: [cartId], references: [id], onDelete: Cascade)
+  productId     String
+  product       Product  @relation(fields: [productId], references: [id])
+  quantity      Int      @default(1)
+  unitPrice     Decimal  
+  totalPrice    Decimal  
+  warrantyId    String?
+  warranty      WarrantyPlan? @relation(fields: [warrantyId], references: [id])
+  warrantyPrice Decimal? 
+  isUpsell      Boolean  @default(false)
+  upsellSource  String?
+  attributes    Json?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@unique([cartId, productId, attributes])
+  @@index([cartId])
+  @@index([productId])
+}
+
+// ==================== ORDERS ====================
+
+model Order {
+  id                 String            @id @default(uuid())
+  orderNumber        String            @unique
+  userId             String?
+  user               User?             @relation(fields: [userId], references: [id], onDelete: SetNull)
+  email              String
+  status             OrderStatus       @default(PENDING)
+  paymentStatus      PaymentStatus     @default(PENDING)
+  fulfillmentStatus  FulfillmentStatus @default(UNFULFILLED)
+  subtotal           Decimal           
+  discountTotal      Decimal            @default(0)
+  taxTotal           Decimal            @default(0)
+  shippingTotal      Decimal            @default(0)
+  total              Decimal           
+  currency           String            @default("USD")
+  paymentMethod      String
+  financingPlatformId String?
+  financingPlatform  FinancingPlatform? @relation(fields: [financingPlatformId], references: [id])
+  financingApprovalId String?
+  financingApproval  FinancingApproval? @relation(fields: [financingApprovalId], references: [id])
+  shippingAddress    Json
+  billingAddress     Json
+  shippingMethod     String
+  trackingNumber     String?
+  trackingUrl        String?
+  notes              String?
+  internalNotes      String?
+  metadata           Json?
+  cancelledAt        DateTime?
+  cancelReason       String?
+  refundedAt         DateTime?
+  refundAmount       Decimal?          
+  completedAt        DateTime?
+  createdAt          DateTime          @default(now())
+  updatedAt          DateTime          @updatedAt
+
+  items              OrderItem[]
+  transactions       Transaction[]
+  refunds            Refund[]
+
+  @@index([userId])
+  @@index([orderNumber])
+  @@index([status])
+  @@index([createdAt])
+}
+
+enum OrderStatus {
+  PENDING
+  CONFIRMED
+  PROCESSING
+  SHIPPED
+  DELIVERED
+  COMPLETED
+  CANCELLED
+  REFUNDED
+}
+
+enum PaymentStatus {
+  PENDING
+  AUTHORIZED
+  PAID
+  PARTIALLY_REFUNDED
+  REFUNDED
+  FAILED
+  CANCELLED
+}
+
+enum FulfillmentStatus {
+  UNFULFILLED
+  PARTIAL
+  FULFILLED
+  RETURNED
+}
+
+model OrderItem {
+  id              String    @id @default(uuid())
+  orderId         String
+  order           Order     @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  productId       String
+  product         Product   @relation(fields: [productId], references: [id])
+  productName     String
+  productSku      String
+  productImage    String?
+  quantity        Int
+  unitPrice       Decimal   
+  totalPrice      Decimal   
+  warrantyId      String?
+  warrantyContractId String?
+  warrantyContract WarrantyContract? @relation(fields: [warrantyContractId], references: [id])
+  warrantyPrice   Decimal?  
+  isUpsell        Boolean   @default(false)
+  attributes      Json?
+  createdAt       DateTime  @default(now())
+
+  @@index([orderId])
+  @@index([productId])
+}
+
+// ==================== PAYMENTS ====================
+
+model PaymentMethod {
+  id                    String   @id @default(uuid())
+  userId                String
+  user                  User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type                  String
+  stripePaymentMethodId String?
+  cardBrand             String?
+  cardLast4             String?
+  cardExpMonth          Int?
+  cardExpYear           Int?
+  bankName              String?
+  bankLast4             String?
+  isDefault             Boolean  @default(false)
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  @@index([userId])
+}
+
+model Transaction {
+  id                 String            @id @default(uuid())
+  orderId            String
+  order              Order             @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  type               TransactionType
+  amount             Decimal           
+  currency           String            @default("USD")
+  status             TransactionStatus @default(PENDING)
+  stripeChargeId     String?
+  stripePaymentIntentId String?
+  stripeRefundId     String?
+  paymentMethod      String?
+  cardBrand          String?
+  cardLast4          String?
+  failureReason      String?
+  metadata           Json?
+  createdAt          DateTime          @default(now())
+  updatedAt          DateTime          @updatedAt
+
+  @@index([orderId])
+  @@index([stripeChargeId])
+}
+
+enum TransactionType {
+  CHARGE
+  REFUND
+  PARTIAL_REFUND
+  CHARGEBACK
+  PAYOUT
+}
+
+enum TransactionStatus {
+  PENDING
+  SUCCEEDED
+  FAILED
+  CANCELLED
+  DISPUTED
+}
+
+model Refund {
+  id              String       @id @default(uuid())
+  orderId         String
+  order           Order        @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  transactionId   String?
+  amount          Decimal      
+  reason          String
+  notes           String?
+  status          RefundStatus @default(PENDING)
+  stripeRefundId  String?
+  processedAt     DateTime?
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+
+  @@index([orderId])
+}
+
+enum RefundStatus {
+  PENDING
+  PROCESSING
+  SUCCEEDED
+  FAILED
+  CANCELLED
+}
+
+// ==================== FINANCING ====================
+
+model FinancingPlatform {
+  id                     String    @id @default(uuid())
+  name                   String
+  slug                   String    @unique
+  description            String?
+  logoUrl                String?
+  type                   String    @default("waterfall")
+  supportedFinancingTypes Json    @default("[\"bnpl\"]")
+  minAmount              Decimal    @default(50)
+  maxAmount              Decimal    @default(10000)
+  config                 Json      @default("{}")
+  enabled                Boolean   @default(true)
+  priority               Int       @default(0)
+  createdAt              DateTime  @default(now())
+  updatedAt              DateTime  @updatedAt
+
+  applications           FinancingApplication[]
+  approvals              FinancingApproval[]
+  orders                 Order[]
+
+  @@index([slug])
+  @@index([enabled, priority])
+}
+
+model FinancingApplication {
+  id                   String                     @id @default(uuid())
+  cartId               String
+  cart                 Cart                       @relation(fields: [cartId], references: [id])
+  platformId           String
+  platform             FinancingPlatform          @relation(fields: [platformId], references: [id])
+  userId               String?
+  user                 User?                      @relation(fields: [userId], references: [id])
+  status               FinancingApplicationStatus @default(PENDING)
+  applicantInfo        Json
+  cartValue            Decimal                    
+  externalApplicationId String?
+  decision             Json?
+  attemptLog           Json                       @default("[]")
+  expiresAt            DateTime?
+  createdAt            DateTime                   @default(now())
+  updatedAt            DateTime                   @updatedAt
+
+  approval             FinancingApproval?
+
+  @@index([cartId])
+  @@index([platformId])
+  @@index([userId])
+  @@index([status])
+}
+
+enum FinancingApplicationStatus {
+  PENDING
+  PROCESSING
+  APPROVED
+  DECLINED
+  EXPIRED
+  CANCELLED
+  ERROR
+}
+
+model FinancingApproval {
+  id                 String               @id @default(uuid())
+  applicationId      String               @unique
+  application        FinancingApplication @relation(fields: [applicationId], references: [id])
+  platformId         String
+  platform           FinancingPlatform    @relation(fields: [platformId], references: [id])
+  approvedAmount     Decimal              
+  usedAmount         Decimal?             
+  terms              Json
+  lenderName         String?
+  lenderId           String?
+  status             String               @default("active")
+  externalApprovalId String?
+  expiresAt          DateTime
+  createdAt          DateTime             @default(now())
+  updatedAt          DateTime             @updatedAt
+
+  orders             Order[]
+  payments           FinancingPayment[]
+
+  @@index([applicationId])
+  @@index([platformId])
+  @@index([status])
+}
+
+model FinancingPayment {
+  id            String            @id @default(uuid())
+  approvalId    String
+  approval      FinancingApproval @relation(fields: [approvalId], references: [id], onDelete: Cascade)
+  paymentNumber Int
+  amount        Decimal           
+  principal     Decimal           
+  interest      Decimal           
+  fees          Decimal?          
+  dueDate       DateTime
+  paidAt        DateTime?
+  status        String            @default("upcoming")
+  transactionId String?
+  createdAt     DateTime          @default(now())
+  updatedAt     DateTime          @updatedAt
+
+  @@index([approvalId])
+  @@index([dueDate])
+}
+
+// ==================== WARRANTY ====================
+
+model WarrantyProvider {
+  id                  String   @id @default(uuid())
+  name                String
+  slug                String   @unique
+  description         String?
+  logoUrl             String?
+  type                String   @default("custom")
+  config              Json     @default("{}")
+  enabled             Boolean  @default(true)
+  priority            Int      @default(0)
+  supportedCategories Json    @default("[]")
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  plans               WarrantyPlan[]
+  contracts           WarrantyContract[]
+
+  @@index([slug])
+  @@index([enabled])
+}
+
+model WarrantyPlan {
+  id             String           @id @default(uuid())
+  providerId     String
+  provider       WarrantyProvider @relation(fields: [providerId], references: [id])
+  productId      String?
+  product        Product?         @relation(fields: [productId], references: [id])
+  externalPlanId String?
+  name           String
+  description    String?
+  type           String           @default("extended_warranty")
+  durationMonths Int
+  price          Decimal          
+  deductible     Decimal?         
+  coverage       Json             @default("[]")
+  exclusions     String[]         @default([])
+  terms          String?
+  termsUrl       String?
+  isActive       Boolean          @default(true)
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+
+  cartItems      CartItem[]
+  contracts      WarrantyContract[]
+
+  @@index([providerId])
+  @@index([productId])
+  @@index([isActive])
+}
+
+model WarrantyContract {
+  id                 String           @id @default(uuid())
+  planId             String
+  plan               WarrantyPlan     @relation(fields: [planId], references: [id])
+  providerId         String
+  provider           WarrantyProvider @relation(fields: [providerId], references: [id])
+  orderId            String
+  orderItemId        String
+  userId             String?
+  user               User?            @relation(fields: [userId], references: [id])
+  externalContractId String?
+  productId          String
+  productName        String
+  productPrice       Decimal          
+  warrantyPrice      Decimal          
+  status             String           @default("pending")
+  startDate          DateTime
+  endDate            DateTime
+  claimsUsed         Int              @default(0)
+  maxClaims          Int?
+  cancellationReason String?
+  cancelledAt        DateTime?
+  createdAt          DateTime         @default(now())
+  updatedAt          DateTime         @updatedAt
+
+  orderItems         OrderItem[]
+  claims             WarrantyClaim[]
+
+  @@index([planId])
+  @@index([orderId])
+  @@index([userId])
+  @@index([status])
+}
+
+model WarrantyClaim {
+  id              String           @id @default(uuid())
+  contractId      String
+  contract        WarrantyContract @relation(fields: [contractId], references: [id], onDelete: Cascade)
+  externalClaimId String?
+  type            String
+  description     String
+  status          String           @default("submitted")
+  approvedAmount  Decimal?         
+  resolution      String?
+  attachments     Json             @default("[]")
+  submittedAt     DateTime         @default(now())
+  resolvedAt      DateTime?
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+
+  @@index([contractId])
+  @@index([status])
+}
+
+// ==================== UPSELL ====================
+
+model UpsellRule {
+  id                String           @id @default(uuid())
+  name              String
+  description       String?
+  productId         String?
+  product           Product?         @relation(fields: [productId], references: [id])
+  categoryId        String?
+  category          ProductCategory? @relation(fields: [categoryId], references: [id])
+  ruleType          String           @default("bundle")
+  config            Json             @default("{}")
+  suggestedProducts Json             @default("[]")
+  warranty          Json?
+  priority          Int              @default(0)
+  isActive          Boolean          @default(true)
+  startDate         DateTime?
+  endDate           DateTime?
+  conditions        Json             @default("[]")
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+
+  @@index([productId])
+  @@index([categoryId])
+  @@index([isActive])
+}
+
+model CategoryUpsellMapping {
+  id               String          @id @default(uuid())
+  sourceCategoryId String
+  sourceCategory   ProductCategory @relation("SourceCategory", fields: [sourceCategoryId], references: [id])
+  targetCategoryId String
+  targetCategory   ProductCategory @relation("TargetCategory", fields: [targetCategoryId], references: [id])
+  maxSuggestions   Int             @default(4)
+  displayText      String?
+  priority         Int             @default(0)
+  isActive         Boolean         @default(true)
+  createdAt        DateTime        @default(now())
+  updatedAt        DateTime        @updatedAt
+
+  @@unique([sourceCategoryId, targetCategoryId])
+  @@index([sourceCategoryId])
+}
+
+model ProductAssociation {
+  id            String   @id @default(uuid())
+  productAId    String
+  productA      Product  @relation("ProductA", fields: [productAId], references: [id], onDelete: Cascade)
+  productBId    String
+  productB      Product  @relation("ProductB", fields: [productBId], references: [id], onDelete: Cascade)
+  confidence    Float    @default(0)
+  support       Float    @default(0)
+  lift          Float    @default(0)
+  coOccurrences Int      @default(0)
+  lastUpdated   DateTime @default(now())
+
+  @@unique([productAId, productBId])
+  @@index([productAId])
+  @@index([productBId])
+  @@index([confidence])
+}
+
+model UpsellInteraction {
+  id                 String   @id @default(uuid())
+  productId          String
+  suggestedProductId String
+  source             String
+  action             String
+  location           String
+  sessionId          String
+  userId             String?
+  createdAt          DateTime @default(now())
+
+  @@index([productId])
+  @@index([suggestedProductId])
+  @@index([sessionId])
+  @@index([createdAt])
+}
+
+// ==================== ML TRAINING ====================
+
+model MLTrainingData {
+  id                  String   @id @default(uuid())
+  orderId             String
+  productCombinations Json
+  userId              String?
+  sessionId           String?
+  createdAt           DateTime @default(now())
+
+  @@index([createdAt])
+}
+
+model MLModel {
+  id            String   @id @default(uuid())
+  modelType     String
+  version       String
+  accuracy      Float?
+  precision     Float?
+  recall        Float?
+  f1Score       Float?
+  trainingData  Int      @default(0)
+  modelPath     String?
+  isActive      Boolean  @default(false)
+  trainedAt     DateTime @default(now())
+  createdAt     DateTime @default(now())
+
+  @@index([modelType, isActive])
+}
+
+// ==================== SHIPPING ====================
+
+model ShippingMethod {
+  id            String   @id @default(uuid())
+  name          String
+  description   String?
+  carrier       String
+  price         Decimal  
+  estimatedDays Int
+  isDefault     Boolean  @default(false)
+  isActive      Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([isActive])
+}
+
+model TaxRate {
+  id         String   @id @default(uuid())
+  country    String
+  state      String?
+  postalCode String?
+  rate       Decimal  
+  name       String?
+  isActive   Boolean  @default(true)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@unique([country, state, postalCode])
+  @@index([country, state])
+}
+

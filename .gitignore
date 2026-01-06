@@ -1,0 +1,60 @@
+# Dependencies
+node_modules/
+.pnp
+.pnp.js
+
+# Build outputs
+dist/
+build/
+*.tsbuildinfo
+
+# Environment files
+.env
+.env.local
+.env.*.local
+backend/.env
+frontend/.env
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Testing
+coverage/
+.nyc_output/
+
+# Prisma
+backend/prisma/migrations/*.sql.bak
+
+# ML Models (large files)
+backend/ml-models/*.bin
+backend/ml-models/*.json
+!backend/ml-models/.gitkeep
+
+# Uploads
+backend/uploads/*
+!backend/uploads/.gitkeep
+
+# Docker volumes
+postgres_data/
+redis_data/
+
+# Misc
+*.pid
+*.seed
+*.pid.lock
+
